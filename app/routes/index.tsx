@@ -96,7 +96,7 @@ const UsersContent = observer(() => {
 
 const UserRow = observer(({ user }: { user: UserStore }) => {
   return (
-    <div className="even:bg-gray-300 even:bg-opacity-5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
       <div>{user.username}</div>
       <div>
         {user.tenant?.maybeCurrent?.name ??
@@ -125,7 +125,7 @@ const TenantsContent = observer(() => {
 
 const TenantRow = observer(({ tenant }: { tenant: TenantStore }) => {
   return (
-    <div className="even:bg-gray-300 even:bg-opacity-5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
       <div>{tenant.name}</div>
       <div>({tenant.users.size} users)</div>
     </div>
