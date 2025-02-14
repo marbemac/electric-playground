@@ -57,13 +57,20 @@ export class SyncStore extends Model({
 	}
 
 	onAttachedToRootStore() {
-		console.log("Sync attached to root store", this.table);
-		return autorun(() => {
-			localStorage.setItem(
-				`el-sync-${this.table}`,
-				JSON.stringify({ isPaused: this.isPaused }),
+		const disposables: (() => void)[] = [];
+
+		if (!import.meta.env.SSR) {
+			disposables.push(
+				autorun(() => {
+					localStorage.setItem(
+						`el-sync-${this.table}`,
+						JSON.stringify({ isPaused: this.isPaused }),
+					);
+				}),
 			);
-		});
+		}
+
+		return () => disposables.forEach((d) => d());
 	}
 
 	@modelAction

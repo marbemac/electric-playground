@@ -1,5 +1,3 @@
-import { scan } from "react-scan";
-
 import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 // import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { Meta, Scripts } from "@tanstack/start";
@@ -8,9 +6,6 @@ import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary.tsx";
 import { NotFound } from "~/components/NotFound.tsx";
 import { Providers } from "~/providers.tsx";
 import appCss from "~/styles/app.css?url";
-
-import { useEffect } from "react";
-import { Syncer } from "./-components/Sync.tsx";
 
 export const Route = createRootRouteWithContext<{}>()({
   component: RootComponent,
@@ -50,23 +45,15 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    scan({
-      enabled: true,
-    });
-  }, []);
-
   return (
     <html lang="en">
       <head>
+        <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
         <Meta />
       </head>
 
       <body>
-        <Providers>
-          {children}
-          <Syncer />
-        </Providers>
+        <Providers>{children}</Providers>
 
         {/* <TanStackRouterDevtools position="bottom-right" /> */}
         <Scripts />

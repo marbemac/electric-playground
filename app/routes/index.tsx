@@ -5,8 +5,11 @@ import type { SyncStore } from "~/stores/sync";
 import type { TenantStore } from "~/stores/tenants";
 import type { UserStore } from "~/stores/users";
 
+import { Syncer } from "./-components/Sync.tsx";
+
 export const Route = createFileRoute("/")({
   component: HomeRoute,
+  wrapInSuspense: false,
 });
 
 function HomeRoute() {
@@ -17,26 +20,30 @@ function HomeRoute() {
   // const invoicesStore = rootStore.invoices;
 
   return (
-    <div className="grid grid-cols-2 grid-rows-2 h-screen w-screen">
-      <TableSection
-        syncer={usersStore.syncer}
-        className="border-b-2 border-r-2"
-      >
-        <UsersContent />
-      </TableSection>
+    <>
+      <div className="grid grid-cols-2 grid-rows-2 h-screen w-screen">
+        <TableSection
+          syncer={usersStore.syncer}
+          className="border-b-2 border-r-2"
+        >
+          <UsersContent />
+        </TableSection>
 
-      <TableSection syncer={tenantsStore.syncer} className="border-b-2">
-        <TenantsContent />
-      </TableSection>
+        <TableSection syncer={tenantsStore.syncer} className="border-b-2">
+          <TenantsContent />
+        </TableSection>
 
-      <TableSection syncer={usersStore.syncer} className="border-r-2">
-        <UsersContent />
-      </TableSection>
+        <TableSection syncer={usersStore.syncer} className="border-r-2">
+          <UsersContent />
+        </TableSection>
 
-      <TableSection syncer={tenantsStore.syncer}>
-        <TenantsContent />
-      </TableSection>
-    </div>
+        <TableSection syncer={tenantsStore.syncer}>
+          <TenantsContent />
+        </TableSection>
+      </div>
+
+      <Syncer />
+    </>
   );
 }
 
