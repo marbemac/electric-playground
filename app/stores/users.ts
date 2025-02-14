@@ -17,7 +17,7 @@ import {
 	removeRecord,
 	updateRecord,
 } from "./sync.ts";
-import { type TenantStore, tenantRef } from "./tenants.ts";
+import { type TenantStore, tenantUserRef } from "./tenants.ts";
 
 export type UserCreationData = SetRequired<ModelCreationData<UserStore>, "id">;
 
@@ -73,6 +73,6 @@ export class UserStore extends Model({
 
 	@modelAction
 	private setTenantRef() {
-		this.tenant = this.tenant_id ? tenantRef(this.tenant_id) : undefined;
+		this.tenant = this.tenant_id ? tenantUserRef(this.tenant_id) : undefined;
 	}
 }

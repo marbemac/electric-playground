@@ -20,11 +20,20 @@ import {
 	updateRecord,
 } from "./sync.ts";
 
-export const tenantRef = rootRef<TenantStore>("el/TenantRef", {
+export const tenantUserRef = rootRef<TenantStore>("el/TenantUserRef", {
 	onResolvedValueChange(ref, newRecord, oldRecord) {
 		if (oldRecord && !newRecord) detach(ref);
 	},
 });
+
+export const tenantSubscriptionRef = rootRef<TenantStore>(
+	"el/TenantSubscriptionRef",
+	{
+		onResolvedValueChange(ref, newRecord, oldRecord) {
+			if (oldRecord && !newRecord) detach(ref);
+		},
+	},
+);
 
 export type TenantCreationData = SetRequired<
 	ModelCreationData<TenantStore>,
@@ -69,6 +78,11 @@ export class TenantStore extends Model({
 }) {
 	@computed
 	get users() {
-		return getRefsResolvingTo(this, tenantRef);
+		return getRefsResolvingTo(this);
+	}
+
+	@computed
+	get subscriptions() {
+		return getRefsResolvingTo(this, tenantSubscriptionRef);
 	}
 }

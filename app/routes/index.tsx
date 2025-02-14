@@ -5,7 +5,9 @@ import type { SyncStore } from "~/stores/sync";
 import type { TenantStore } from "~/stores/tenants";
 import type { UserStore } from "~/stores/users";
 
-import { Syncer } from "./-components/Sync.tsx";
+import { useEffect } from "react";
+import type { InvoiceStore } from "~/stores/invoices";
+import type { SubscriptionStore } from "~/stores/subscriptions";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
@@ -16,36 +18,48 @@ function HomeRoute() {
   const rootStore = useRootStore();
   const usersStore = rootStore.users;
   const tenantsStore = rootStore.tenants;
-  // const subscriptionsStore = rootStore.subscriptions;
-  // const invoicesStore = rootStore.invoices;
+  const subscriptionsStore = rootStore.subscriptions;
+  const invoicesStore = rootStore.invoices;
+
+  useSyncIfNotPaused(rootStore.tenants.syncer);
+  useSyncIfNotPaused(rootStore.users.syncer);
+  useSyncIfNotPaused(rootStore.subscriptions.syncer);
+  useSyncIfNotPaused(rootStore.invoices.syncer);
 
   return (
-    <>
-      <div className="grid grid-cols-2 grid-rows-2 h-screen w-screen">
-        <TableSection
-          syncer={usersStore.syncer}
-          className="border-b-2 border-r-2"
-        >
-          <UsersContent />
-        </TableSection>
+    <div className="grid grid-cols-2 grid-rows-2 h-screen w-screen">
+      <TableSection
+        syncer={tenantsStore.syncer}
+        className="border-b-2 border-r-2"
+      >
+        <TenantsContent />
+      </TableSection>
 
-        <TableSection syncer={tenantsStore.syncer} className="border-b-2">
-          <TenantsContent />
-        </TableSection>
+      <TableSection syncer={usersStore.syncer} className="border-b-2">
+        <UsersContent />
+      </TableSection>
 
-        <TableSection syncer={usersStore.syncer} className="border-r-2">
-          <UsersContent />
-        </TableSection>
+      <TableSection syncer={subscriptionsStore.syncer} className="border-r-2">
+        <SubscriptionsContent />
+      </TableSection>
 
-        <TableSection syncer={tenantsStore.syncer}>
-          <TenantsContent />
-        </TableSection>
-      </div>
-
-      <Syncer />
-    </>
+      <TableSection syncer={invoicesStore.syncer}>
+        <InvoicesContent />
+      </TableSection>
+    </div>
   );
 }
+
+const useSyncIfNotPaused = (syncer: SyncStore) => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    if (!syncer.isPaused) {
+      syncer.start();
+    }
+
+    return () => syncer.stop();
+  }, []);
+};
 
 const TableSection = observer(
   ({
@@ -106,8 +120,10 @@ const UserRow = observer(({ user }: { user: UserStore }) => {
     <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
       <div>{user.username}</div>
       <div>
+        (
         {user.tenant?.maybeCurrent?.name ??
           `tenant ${user.tenant_id} not found`}
+        )
       </div>
     </div>
   );
@@ -131,10 +147,77 @@ const TenantsContent = observer(() => {
 });
 
 const TenantRow = observer(({ tenant }: { tenant: TenantStore }) => {
+  console.log(Array.from(tenant.users));
   return (
     <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
       <div>{tenant.name}</div>
       <div>({tenant.users.size} users)</div>
+    </div>
+  );
+});
+
+const SubscriptionsContent = observer(() => {
+  const subscriptionsStore = useRootStore().subscriptions;
+  const subscriptions = Object.values(subscriptionsStore.records);
+
+  if (subscriptions.length === 0) {
+    return <div className="text-gray-400">No subscriptions found</div>;
+  }
+
+  return (
+    <div className="flex flex-col">
+      {subscriptions.map((subscription) => (
+        <SubscriptionRow key={subscription.id} subscription={subscription} />
+      ))}
+    </div>
+  );
+});
+
+const SubscriptionRow = observer(
+  ({ subscription }: { subscription: SubscriptionStore }) => {
+    return (
+      <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+        <div>
+          (
+          {subscription.tenant?.maybeCurrent?.name ??
+            `tenant ${subscription.tenant_id} not found`}
+          )
+        </div>
+        <div>{subscription.status}</div>
+        <div>{subscription.started_at}</div>
+      </div>
+    );
+  }
+);
+
+const InvoicesContent = observer(() => {
+  const invoicesStore = useRootStore().invoices;
+  const invoices = Object.values(invoicesStore.records);
+
+  if (invoices.length === 0) {
+    return <div className="text-gray-400">No invoices found</div>;
+  }
+
+  return (
+    <div className="flex flex-col">
+      {invoices.map((invoice) => (
+        <InvoiceRow key={invoice.id} invoice={invoice} />
+      ))}
+    </div>
+  );
+});
+
+const InvoiceRow = observer(({ invoice }: { invoice: InvoiceStore }) => {
+  return (
+    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+      <div>
+        (
+        {invoice.subscription?.maybeCurrent?.tenant?.maybeCurrent?.name ??
+          `tenant ${invoice.subscription?.maybeCurrent?.tenant_id} not found`}
+        )
+      </div>
+      <div>{invoice.total}</div>
+      <div>{invoice.created_at}</div>
     </div>
   );
 });
