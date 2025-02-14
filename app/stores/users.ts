@@ -1,8 +1,8 @@
-import { type IReactionDisposer, reaction } from "mobx";
+import { computed } from "mobx";
 import {
 	Model,
 	type ModelCreationData,
-	type Ref,
+	getRoot,
 	idProp,
 	model,
 	modelAction,
@@ -10,6 +10,7 @@ import {
 } from "mobx-keystone";
 import type { SetRequired } from "type-fest";
 
+import type { RootStore } from "./root.ts";
 import {
 	SyncStore,
 	type SyncableStore,
@@ -17,7 +18,6 @@ import {
 	removeRecord,
 	updateRecord,
 } from "./sync.ts";
-import { type TenantStore, tenantUserRef } from "./tenants.ts";
 
 export type UserCreationData = SetRequired<ModelCreationData<UserStore>, "id">;
 
@@ -55,24 +55,9 @@ export class UserStore extends Model({
 	id: idProp,
 	username: prop<string>(),
 	tenant_id: prop<string>(),
-	tenant: prop<Ref<TenantStore> | undefined>(),
 }) {
-	onAttachedToRootStore() {
-		const r: IReactionDisposer[] = [];
-
-		r.push(
-			reaction(
-				() => this.tenant_id,
-				() => this.setTenantRef(),
-				{ fireImmediately: true },
-			),
-		);
-
-		return () => r.forEach((d) => d());
-	}
-
-	@modelAction
-	private setTenantRef() {
-		this.tenant = this.tenant_id ? tenantUserRef(this.tenant_id) : undefined;
+	@computed
+	get tenant() {
+		return getRoot<RootStore>(this).tenants.records[this.tenant_id];
 	}
 }

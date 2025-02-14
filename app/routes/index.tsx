@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { observer } from "mobx-react-lite";
+import { useCallback, useEffect, useState } from "react";
+
 import { useRootStore } from "~/stores/root";
 import type { SyncStore } from "~/stores/sync";
 import type { TenantStore } from "~/stores/tenants";
 import type { UserStore } from "~/stores/users";
 
-import { useEffect } from "react";
-import type { InvoiceStore } from "~/stores/invoices";
-import type { SubscriptionStore } from "~/stores/subscriptions";
+import type { InvoiceStore } from "~/stores/invoices.ts";
+import type { SubscriptionStore } from "~/stores/subscriptions.ts";
+import { changeInvoiceTotal, removeInvoice } from "./-server/invoices.ts";
+import { removeUser } from "./-server/users.ts";
 
 export const Route = createFileRoute("/")({
   component: HomeRoute,
@@ -103,7 +106,7 @@ const UsersContent = observer(() => {
   const users = Object.values(usersStore.records);
 
   if (users.length === 0) {
-    return <div className="text-gray-400">No users found</div>;
+    return <div className="text-gray-400 p-4">No users found</div>;
   }
 
   return (
@@ -116,15 +119,27 @@ const UsersContent = observer(() => {
 });
 
 const UserRow = observer(({ user }: { user: UserStore }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    await removeUser({ data: { userId: user.id } });
+  }, [user]);
+
   return (
-    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
       <div>{user.username}</div>
-      <div>
-        (
-        {user.tenant?.maybeCurrent?.name ??
-          `tenant ${user.tenant_id} not found`}
-        )
-      </div>
+
+      <div>({user.tenant?.name ?? `tenant ${user.tenant_id} not found`})</div>
+
+      <button
+        type="button"
+        className="text-red-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+        onClick={handleDelete}
+        disabled={isDeleting}
+      >
+        [X]
+      </button>
     </div>
   );
 });
@@ -134,7 +149,7 @@ const TenantsContent = observer(() => {
   const tenants = Object.values(tenantsStore.records);
 
   if (tenants.length === 0) {
-    return <div className="text-gray-400">No tenants found</div>;
+    return <div className="text-gray-400 p-4">No tenants found</div>;
   }
 
   return (
@@ -147,11 +162,11 @@ const TenantsContent = observer(() => {
 });
 
 const TenantRow = observer(({ tenant }: { tenant: TenantStore }) => {
-  console.log(Array.from(tenant.users));
   return (
-    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
       <div>{tenant.name}</div>
-      <div>({tenant.users.size} users)</div>
+      <div>({tenant.userCount} users)</div>
+      <div>({tenant.subscription?.totalInvoiced ?? "!!"} total invoiced)</div>
     </div>
   );
 });
@@ -161,7 +176,7 @@ const SubscriptionsContent = observer(() => {
   const subscriptions = Object.values(subscriptionsStore.records);
 
   if (subscriptions.length === 0) {
-    return <div className="text-gray-400">No subscriptions found</div>;
+    return <div className="text-gray-400 p-4">No subscriptions found</div>;
   }
 
   return (
@@ -176,10 +191,10 @@ const SubscriptionsContent = observer(() => {
 const SubscriptionRow = observer(
   ({ subscription }: { subscription: SubscriptionStore }) => {
     return (
-      <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+      <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
         <div>
           (
-          {subscription.tenant?.maybeCurrent?.name ??
+          {subscription.tenant?.name ??
             `tenant ${subscription.tenant_id} not found`}
           )
         </div>
@@ -195,7 +210,7 @@ const InvoicesContent = observer(() => {
   const invoices = Object.values(invoicesStore.records);
 
   if (invoices.length === 0) {
-    return <div className="text-gray-400">No invoices found</div>;
+    return <div className="text-gray-400 p-4">No invoices found</div>;
   }
 
   return (
@@ -208,16 +223,62 @@ const InvoicesContent = observer(() => {
 });
 
 const InvoiceRow = observer(({ invoice }: { invoice: InvoiceStore }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    await removeInvoice({ data: { invoiceId: invoice.id } });
+  }, [invoice]);
+
+  const [isChangingTotal, setIsChangingTotal] = useState(false);
+  const handleChangeTotal = useCallback(
+    async ({ total }: { total: number }) => {
+      setIsChangingTotal(true);
+      await changeInvoiceTotal({ data: { invoiceId: invoice.id, total } });
+      setIsChangingTotal(false);
+    },
+    [invoice]
+  );
+
   return (
-    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-5">
+    <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
       <div>
         (
-        {invoice.subscription?.maybeCurrent?.tenant?.maybeCurrent?.name ??
-          `tenant ${invoice.subscription?.maybeCurrent?.tenant_id} not found`}
+        {invoice.subscription?.tenant?.name ??
+          `tenant ${invoice.subscription?.tenant_id} not found`}
         )
       </div>
-      <div>{invoice.total}</div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="text-blue-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+          onClick={() => handleChangeTotal({ total: invoice.total - 1 })}
+          disabled={isChangingTotal}
+        >
+          [-]
+        </button>
+        <div>{invoice.total}</div>
+        <button
+          type="button"
+          className="text-blue-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+          onClick={() => handleChangeTotal({ total: invoice.total + 1 })}
+          disabled={isChangingTotal}
+        >
+          [+]
+        </button>
+      </div>
+
       <div>{invoice.created_at}</div>
+
+      <button
+        type="button"
+        className="text-red-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+        onClick={handleDelete}
+        disabled={isDeleting}
+      >
+        [X]
+      </button>
     </div>
   );
 });

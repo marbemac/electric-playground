@@ -13,6 +13,8 @@ import {
 	usersTable,
 } from "./schema.ts";
 
+import { env } from "~/env.ts";
+
 const sizes = {
 	max: {
 		tenants: 20_000,
@@ -154,7 +156,7 @@ export const ingestRawEvents = async (
 	}
 };
 
-const db = drizzle(process.env.PG_URL!);
+const db = drizzle(env.PG_URL);
 
 await ingestRawEvents(db);
 

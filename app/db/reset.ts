@@ -1,6 +1,8 @@
 import postgres from "postgres";
 
-const sql = postgres(process.env.PG_URL!);
+import { env } from "~/env.ts";
+
+const sql = postgres(env.PG_URL);
 
 const s = "public";
 

@@ -16,11 +16,16 @@ export function createRootStore(): RootStore {
 
 	registerRootStore(rootStore);
 
+	if (typeof window !== "undefined") {
+		// @ts-expect-error ignore
+		window.__ROOT_STORE__ = rootStore;
+	}
+
 	return rootStore;
 }
 
 @model("el/RootStore")
-class RootStore extends Model({
+export class RootStore extends Model({
 	users: prop<UsersStore>(() => new UsersStore({})),
 	tenants: prop<TenantsStore>(() => new TenantsStore({})),
 	subscriptions: prop<SubscriptionsStore>(() => new SubscriptionsStore({})),

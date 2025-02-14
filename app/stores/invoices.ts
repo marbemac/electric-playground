@@ -1,8 +1,8 @@
-import { type IReactionDisposer, reaction } from "mobx";
+import { computed } from "mobx";
 import {
 	Model,
 	type ModelCreationData,
-	type Ref,
+	getRoot,
 	idProp,
 	model,
 	modelAction,
@@ -10,10 +10,7 @@ import {
 } from "mobx-keystone";
 import type { SetRequired } from "type-fest";
 
-import {
-	type SubscriptionStore,
-	subscriptionInvoiceRef,
-} from "./subscriptions.ts";
+import type { RootStore } from "./root.ts";
 import {
 	SyncStore,
 	type SyncableStore,
@@ -60,28 +57,11 @@ export class InvoicesStore
 export class InvoiceStore extends Model({
 	id: idProp,
 	subscription_id: prop<string>(),
-	subscription: prop<Ref<SubscriptionStore> | undefined>(),
 	total: prop<number>(),
 	created_at: prop<string>(),
 }) {
-	onAttachedToRootStore() {
-		const r: IReactionDisposer[] = [];
-
-		r.push(
-			reaction(
-				() => this.subscription_id,
-				() => this.setSubscriptionRef(),
-				{ fireImmediately: true },
-			),
-		);
-
-		return () => r.forEach((d) => d());
-	}
-
-	@modelAction
-	private setSubscriptionRef() {
-		this.subscription = this.subscription_id
-			? subscriptionInvoiceRef(this.subscription_id)
-			: undefined;
+	@computed
+	get subscription() {
+		return getRoot<RootStore>(this).subscriptions.records[this.subscription_id];
 	}
 }

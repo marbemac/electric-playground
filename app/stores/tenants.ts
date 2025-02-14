@@ -1,17 +1,16 @@
 import {
 	Model,
 	type ModelCreationData,
-	detach,
-	getRefsResolvingTo,
+	getRoot,
 	idProp,
 	model,
 	modelAction,
 	prop,
-	rootRef,
 } from "mobx-keystone";
 import type { SetRequired } from "type-fest";
 
 import { computed } from "mobx";
+import type { RootStore } from "./root.ts";
 import {
 	SyncStore,
 	type SyncableStore,
@@ -19,21 +18,6 @@ import {
 	removeRecord,
 	updateRecord,
 } from "./sync.ts";
-
-export const tenantUserRef = rootRef<TenantStore>("el/TenantUserRef", {
-	onResolvedValueChange(ref, newRecord, oldRecord) {
-		if (oldRecord && !newRecord) detach(ref);
-	},
-});
-
-export const tenantSubscriptionRef = rootRef<TenantStore>(
-	"el/TenantSubscriptionRef",
-	{
-		onResolvedValueChange(ref, newRecord, oldRecord) {
-			if (oldRecord && !newRecord) detach(ref);
-		},
-	},
-);
 
 export type TenantCreationData = SetRequired<
 	ModelCreationData<TenantStore>,
@@ -78,11 +62,20 @@ export class TenantStore extends Model({
 }) {
 	@computed
 	get users() {
-		return getRefsResolvingTo(this);
+		return Object.values(getRoot<RootStore>(this).users.records).filter(
+			(r) => r.tenant_id === this.id,
+		);
 	}
 
 	@computed
-	get subscriptions() {
-		return getRefsResolvingTo(this, tenantSubscriptionRef);
+	get userCount() {
+		return this.users.length;
+	}
+
+	@computed
+	get subscription() {
+		return Object.values(getRoot<RootStore>(this).subscriptions.records).find(
+			(r) => r.tenant_id === this.id,
+		);
 	}
 }
