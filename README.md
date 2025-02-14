@@ -7,3 +7,7 @@ yarn db.push
 yarn db.seed --min
 yarn dev
 ```
+
+Example:
+
+![](./images/example.gif)
