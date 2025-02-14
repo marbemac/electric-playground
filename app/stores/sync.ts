@@ -32,7 +32,7 @@ export interface SyncableStore<
 @model("el/SyncStore")
 export class SyncStore extends Model({
 	table: prop<string>(),
-	isPaused: prop<boolean>(false),
+	isPaused: prop<boolean>(true),
 	isSyncing: prop<boolean>(false),
 	error: prop<FetchError | false>(false),
 }) {
