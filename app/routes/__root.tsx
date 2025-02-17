@@ -1,6 +1,10 @@
-import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
 // import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { Meta, Scripts } from "@tanstack/start";
 
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary.tsx";
 import { NotFound } from "~/components/NotFound.tsx";
@@ -49,7 +53,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
-        <Meta />
+        <HeadContent />
       </head>
 
       <body>
