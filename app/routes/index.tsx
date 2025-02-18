@@ -9,6 +9,8 @@ import type { UserStore } from "~/stores/users";
 
 import type { InvoiceStore } from "~/stores/invoices.ts";
 import type { SubscriptionStore } from "~/stores/subscriptions.ts";
+import { useSyncIfNotPaused } from "~/utils/use-sync-if-not-paused.ts";
+import { SyncButton } from "./-components/SyncButton.tsx";
 import { changeInvoiceTotal, removeInvoice } from "./-server/invoices.ts";
 import { removeUser } from "./-server/users.ts";
 
@@ -30,7 +32,7 @@ function HomeRoute() {
   useSyncIfNotPaused(rootStore.invoices.syncer);
 
   return (
-    <div className="grid grid-cols-2 grid-rows-2 h-screen w-screen">
+    <div className="grid grid-cols-2 grid-rows-2 h-screen w-full">
       <TableSection
         syncer={tenantsStore.syncer}
         className="border-b-2 border-r-2"
@@ -53,17 +55,6 @@ function HomeRoute() {
   );
 }
 
-const useSyncIfNotPaused = (syncer: SyncStore) => {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useEffect(() => {
-    if (!syncer.isPaused) {
-      syncer.start();
-    }
-
-    return () => syncer.stop();
-  }, []);
-};
-
 const TableSection = observer(
   ({
     syncer,
@@ -79,20 +70,7 @@ const TableSection = observer(
         <div className="sticky top-0 flex items-center justify-between px-4 py-2 border-b">
           <h2 className="font-semibold">{syncer.table}</h2>
 
-          {syncer && (
-            <div
-              title={syncer.isSyncing ? "Syncing" : "Not syncing"}
-              className="cursor-pointer flex items-center gap-2"
-              onClick={() => syncer.togglePause()}
-            >
-              <div>{syncer.isSyncing ? "Syncing" : "Not syncing"}</div>
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  syncer.isSyncing ? "bg-green-500" : "bg-red-500"
-                }`}
-              />
-            </div>
-          )}
+          <SyncButton syncer={syncer} />
         </div>
 
         <div className="flex-1 overflow-y-auto">{children}</div>

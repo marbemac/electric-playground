@@ -32,8 +32,6 @@ export class TenantsStore
 	})
 	implements SyncableStore<TenantCreationData>
 {
-	readonly table = "tenants";
-
 	@modelAction
 	insert(record: TenantCreationData) {
 		return insertRecord(this.records, TenantStore, record);

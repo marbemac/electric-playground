@@ -1,0 +1,96 @@
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useParams,
+} from "@tanstack/react-router";
+import { observer } from "mobx-react-lite";
+import { twJoin } from "tailwind-merge";
+import type { DocumentStore } from "~/stores/documents.ts";
+import { useRootStore } from "~/stores/root.ts";
+import { useSyncIfNotPaused } from "~/utils/use-sync-if-not-paused.ts";
+import { SyncButton } from "../-components/SyncButton.tsx";
+
+export const Route = createFileRoute("/documents")({
+  component: DocumentsLayout,
+});
+
+function DocumentsLayout() {
+  const rootStore = useRootStore();
+  const documentsStore = rootStore.documents;
+
+  useSyncIfNotPaused(documentsStore.syncer);
+
+  return (
+    <div className="flex w-full">
+      <div className="border-r h-screen w-80 flex flex-col shrink-0">
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <h2 className="font-semibold">Documents</h2>
+          <SyncButton syncer={documentsStore.syncer} />
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <DocumentsList />
+        </div>
+      </div>
+
+      <Outlet />
+    </div>
+  );
+}
+
+const DocumentsList = observer(() => {
+  const documentsStore = useRootStore().documents;
+  const { documentId: currentDocumentId } = useParams({ strict: false });
+
+  return (
+    <div className="flex flex-1 flex-col divide-y">
+      {Object.values(documentsStore.records).map((document) => (
+        <DocumentRow
+          key={document.id}
+          document={document}
+          isActive={document.id === currentDocumentId}
+        />
+      ))}
+    </div>
+  );
+});
+
+const DocumentRow = observer(
+  ({ document, isActive }: { document: DocumentStore; isActive: boolean }) => {
+    const content = (
+      <>
+        <div className="text-sm font-semibold">{document.title}</div>
+
+        <div className="text-gray-400 text-xs flex gap-2">
+          <div>{document.createdBy?.username}</div>
+          <div className="ml-auto flex gap-1">
+            <div>{document.status}</div>
+            <div>•</div>
+            <div>{document.visibility}</div>
+          </div>
+        </div>
+      </>
+    );
+
+    const className = "px-4 py-2.5 flex flex-col gap-0.5";
+
+    if (isActive) {
+      return (
+        <Link className={twJoin(className, "bg-gray-900/30")} to="/documents">
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        className={twJoin(className, "hover:bg-gray-900/30")}
+        to="/documents/$documentId"
+        params={{ documentId: document.id }}
+      >
+        {content}
+      </Link>
+    );
+  }
+);

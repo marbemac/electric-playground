@@ -1,6 +1,7 @@
 import { Model, model, prop, registerRootStore } from "mobx-keystone";
 import { createContext } from "~/utils/create-context.tsx";
 
+import { DocumentsStore } from "./documents.ts";
 import { InvoicesStore } from "./invoices.ts";
 import { SubscriptionsStore } from "./subscriptions.ts";
 import { TenantsStore } from "./tenants.ts";
@@ -30,4 +31,5 @@ export class RootStore extends Model({
 	tenants: prop<TenantsStore>(() => new TenantsStore({})),
 	subscriptions: prop<SubscriptionsStore>(() => new SubscriptionsStore({})),
 	invoices: prop<InvoicesStore>(() => new InvoicesStore({})),
+	documents: prop<DocumentsStore>(() => new DocumentsStore({})),
 }) {}

@@ -1,15 +1,21 @@
+import { config } from "@fortawesome/fontawesome-svg-core";
 import {
   HeadContent,
   Outlet,
   Scripts,
   createRootRouteWithContext,
 } from "@tanstack/react-router";
+
 // import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary.tsx";
 import { NotFound } from "~/components/NotFound.tsx";
 import { Providers } from "~/providers.tsx";
 import appCss from "~/styles/app.css?url";
+
+import { Gutter } from "./-components/Gutter.tsx";
+
+config.autoAddCss = false;
 
 export const Route = createRootRouteWithContext<{}>()({
   component: RootComponent,
@@ -37,6 +43,12 @@ export const Route = createRootRouteWithContext<{}>()({
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico" },
     ],
+
+    scripts: [
+      {
+        src: "https://unpkg.com/react-scan/dist/auto.global.js",
+      },
+    ],
   }),
 });
 
@@ -52,12 +64,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
         <HeadContent />
       </head>
 
-      <body>
-        <Providers>{children}</Providers>
+      <body className="flex">
+        <Providers>
+          <div className="border-r shrink-0 h-screen">
+            <Gutter />
+          </div>
+
+          <div className="flex flex-1">{children}</div>
+        </Providers>
 
         {/* <TanStackRouterDevtools position="bottom-right" /> */}
         <Scripts />
