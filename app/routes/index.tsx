@@ -28,6 +28,7 @@ function HomeRoute() {
 
   useSyncIfNotPaused(rootStore.tenants.syncer);
   useSyncIfNotPaused(rootStore.users.syncer);
+  useSyncIfNotPaused(rootStore.userTenants.syncer, true);
   useSyncIfNotPaused(rootStore.subscriptions.syncer);
   useSyncIfNotPaused(rootStore.invoices.syncer);
 
@@ -106,9 +107,18 @@ const UserRow = observer(({ user }: { user: UserStore }) => {
 
   return (
     <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
-      <div>{user.username}</div>
+      <div className="w-36 truncate">{user.username}</div>
 
-      <div>({user.tenant?.name ?? `tenant ${user.tenant_id} not found`})</div>
+      <div className="flex flex-col gap-1">
+        {user.tenants.map((tenant) => (
+          <div key={tenant.id} className="flex gap-2">
+            <span>{tenant.name}</span>
+            <span className="text-xs">
+              ({user.isAdminOfTenant(tenant.id) ? "admin" : "member"})
+            </span>
+          </div>
+        ))}
+      </div>
 
       <button
         type="button"
@@ -142,9 +152,13 @@ const TenantsContent = observer(() => {
 const TenantRow = observer(({ tenant }: { tenant: TenantStore }) => {
   return (
     <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
-      <div>{tenant.name}</div>
-      <div>({tenant.userCount} users)</div>
-      <div>({tenant.subscription?.totalInvoiced ?? "!!"} total invoiced)</div>
+      <div className="w-44 truncate">{tenant.name}</div>
+      <div className="w-40 truncate">
+        ({tenant.adminUsers.length} admins, {tenant.memberUsers.length} members)
+      </div>
+      <div className="shrink-0">
+        (${tenant.subscription?.totalInvoiced ?? "!!"} invoiced)
+      </div>
     </div>
   );
 });
@@ -170,13 +184,13 @@ const SubscriptionRow = observer(
   ({ subscription }: { subscription: SubscriptionStore }) => {
     return (
       <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
-        <div>
+        <div className="w-44 truncate">
           (
           {subscription.tenant?.name ??
             `tenant ${subscription.tenant_id} not found`}
           )
         </div>
-        <div>{subscription.status}</div>
+        <div className="w-16">{subscription.status}</div>
         <div>{subscription.started_at}</div>
       </div>
     );
@@ -220,17 +234,17 @@ const InvoiceRow = observer(({ invoice }: { invoice: InvoiceStore }) => {
 
   return (
     <div className="even:bg-gray-300/5 px-4 py-1 text-gray-400 text-sm flex gap-8">
-      <div>
+      <div className="w-52 truncate">
         (
         {invoice.subscription?.tenant?.name ??
           `tenant ${invoice.subscription?.tenant_id} not found`}
         )
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 w-20 justify-between shrink-0">
         <button
           type="button"
-          className="text-blue-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+          className="text-blue-400/70 text-xs cursor-pointer disabled:opacity-50"
           onClick={() => handleChangeTotal({ total: invoice.total - 1 })}
           disabled={isChangingTotal}
         >
@@ -239,7 +253,7 @@ const InvoiceRow = observer(({ invoice }: { invoice: InvoiceStore }) => {
         <div>{invoice.total}</div>
         <button
           type="button"
-          className="text-blue-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+          className="text-blue-400/70 text-xs cursor-pointer disabled:opacity-50"
           onClick={() => handleChangeTotal({ total: invoice.total + 1 })}
           disabled={isChangingTotal}
         >
@@ -247,7 +261,7 @@ const InvoiceRow = observer(({ invoice }: { invoice: InvoiceStore }) => {
         </button>
       </div>
 
-      <div>{invoice.created_at}</div>
+      <div className="truncate">{invoice.created_at}</div>
 
       <button
         type="button"

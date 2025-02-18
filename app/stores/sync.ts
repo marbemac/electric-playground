@@ -8,7 +8,7 @@ import {
 	isControlMessage,
 } from "@electric-sql/client";
 import { getShapeStream } from "@electric-sql/react";
-import { autorun, makeAutoObservable } from "mobx";
+import { autorun, computed, makeAutoObservable } from "mobx";
 import {
 	Model,
 	type Patch,
@@ -34,13 +34,14 @@ export class SyncStore extends Model({
 	table: prop<string>(),
 	isPaused: prop<boolean>(true),
 	isSyncing: prop<boolean>(false),
-	error: prop<FetchError | false>(false),
+	hasError: prop<boolean>(false),
 }) {
 	private controller: AbortController | undefined;
 	private stream: ShapeStream<{ id: string }> | undefined;
 	private unsubscribe: (() => void) | undefined;
 	private lastOffset: Offset | undefined;
 	private lastShapeHandle: string | undefined;
+	private _error: FetchError | null = null;
 
 	private get collection() {
 		return getParent<SyncableStore>(this)!;
@@ -71,6 +72,16 @@ export class SyncStore extends Model({
 		}
 
 		return () => disposables.forEach((d) => d());
+	}
+
+	@computed
+	get error() {
+		return this.hasError ? this._error : null;
+	}
+
+	private set error(error: FetchError | null) {
+		this._error = error;
+		this.hasError = !!error;
 	}
 
 	@modelAction
@@ -149,7 +160,7 @@ export class SyncStore extends Model({
 					case `must-refetch`:
 						console.log("!! must-refetch", this.table);
 						this.collection.clear();
-						this.error = false;
+						this.error = null;
 						break;
 				}
 			}

@@ -22,14 +22,24 @@ export const tenantsTable = pgTable("tenants", {
 	name: varchar({ length: 255 }).notNull(),
 });
 
-export const usersTable = pgTable(
-	"users",
+export const usersTable = pgTable("users", {
+	id: varchar({ length: 255 }).primaryKey(),
+	username: varchar({ length: 255 }).notNull(),
+});
+
+export const userTenantsTable = pgTable(
+	"user_tenants",
 	{
 		id: varchar({ length: 255 }).primaryKey(),
-		username: varchar({ length: 255 }).notNull(),
+		user_id: varchar({ length: 255 }).notNull(),
 		tenant_id: varchar({ length: 255 }).notNull(),
+		role: varchar({ enum: ["member", "admin"] }).notNull(),
+		created_at: timestamp({ mode: "string" }).notNull(),
 	},
-	(table) => [index("users_tenant_id_idx").on(table.tenant_id)],
+	(table) => [
+		index("user_tenants_user_id_idx").on(table.user_id),
+		index("user_tenants_tenant_id_idx").on(table.tenant_id),
+	],
 );
 
 export const subscriptionsTable = pgTable(

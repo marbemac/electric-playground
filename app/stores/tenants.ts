@@ -18,6 +18,7 @@ import {
 	removeRecord,
 	updateRecord,
 } from "./sync.ts";
+import type { UserTenantStore } from "./user-tenants.ts";
 
 export type TenantCreationData = SetRequired<
 	ModelCreationData<TenantStore>,
@@ -59,10 +60,31 @@ export class TenantStore extends Model({
 	name: prop<string>(),
 }) {
 	@computed
+	get userRelationships(): UserTenantStore[] {
+		return getRoot<RootStore>(this).userTenants.byTenantId.get(this.id) || [];
+	}
+
+	@computed
 	get users() {
-		return Object.values(getRoot<RootStore>(this).users.records).filter(
-			(r) => r.tenant_id === this.id,
-		);
+		return this.userRelationships
+			.map((rel: UserTenantStore) => rel.user)
+			.filter(Boolean);
+	}
+
+	@computed
+	get adminUsers() {
+		return this.userRelationships
+			.filter((rel: UserTenantStore) => rel.role === "admin")
+			.map((rel: UserTenantStore) => rel.user)
+			.filter(Boolean);
+	}
+
+	@computed
+	get memberUsers() {
+		return this.userRelationships
+			.filter((rel: UserTenantStore) => rel.role === "member")
+			.map((rel: UserTenantStore) => rel.user)
+			.filter(Boolean);
 	}
 
 	@computed
