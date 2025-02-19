@@ -68,4 +68,11 @@ export class DocumentStore extends Model({
 	get createdBy() {
 		return getRoot<RootStore>(this).users.records[this.created_by];
 	}
+
+	@computed
+	get comments() {
+		return Object.values(getRoot<RootStore>(this).comments.records).filter(
+			(comment) => comment.document_id === this.id,
+		);
+	}
 }

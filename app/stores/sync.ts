@@ -47,16 +47,6 @@ export class SyncStore extends Model({
 		return getParent<SyncableStore>(this)!;
 	}
 
-	onInit() {
-		if (!import.meta.env.SSR) {
-			const stored = localStorage.getItem(`el-sync-${this.table}`);
-			if (stored) {
-				const { isPaused } = JSON.parse(stored);
-				this.isPaused = isPaused;
-			}
-		}
-	}
-
 	onAttachedToRootStore() {
 		const disposables: (() => void)[] = [];
 
@@ -69,6 +59,14 @@ export class SyncStore extends Model({
 					);
 				}),
 			);
+		}
+
+		if (!import.meta.env.SSR) {
+			const stored = localStorage.getItem(`el-sync-${this.table}`);
+			if (stored) {
+				const { isPaused } = JSON.parse(stored);
+				this.isPaused = isPaused;
+			}
 		}
 
 		return () => disposables.forEach((d) => d());

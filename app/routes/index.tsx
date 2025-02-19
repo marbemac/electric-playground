@@ -9,14 +9,12 @@ import type { UserStore } from "~/stores/users";
 
 import type { InvoiceStore } from "~/stores/invoices.ts";
 import type { SubscriptionStore } from "~/stores/subscriptions.ts";
-import { useSyncIfNotPaused } from "~/utils/use-sync-if-not-paused.ts";
-import { SyncButton } from "./-components/SyncButton.tsx";
 import { changeInvoiceTotal, removeInvoice } from "./-server/invoices.ts";
 import { removeUser } from "./-server/users.ts";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   component: HomeRoute,
-  wrapInSuspense: false,
 });
 
 function HomeRoute() {
@@ -25,12 +23,6 @@ function HomeRoute() {
   const tenantsStore = rootStore.tenants;
   const subscriptionsStore = rootStore.subscriptions;
   const invoicesStore = rootStore.invoices;
-
-  useSyncIfNotPaused(rootStore.tenants.syncer);
-  useSyncIfNotPaused(rootStore.users.syncer);
-  useSyncIfNotPaused(rootStore.userTenants.syncer, true);
-  useSyncIfNotPaused(rootStore.subscriptions.syncer);
-  useSyncIfNotPaused(rootStore.invoices.syncer);
 
   return (
     <div className="grid grid-cols-2 grid-rows-2 h-screen w-full">
@@ -70,8 +62,6 @@ const TableSection = observer(
       <div className={`flex flex-col overflow-hidden ${className}`}>
         <div className="sticky top-0 flex items-center justify-between px-4 py-2 border-b">
           <h2 className="font-semibold">{syncer.table}</h2>
-
-          <SyncButton syncer={syncer} />
         </div>
 
         <div className="flex-1 overflow-y-auto">{children}</div>
@@ -85,7 +75,11 @@ const UsersContent = observer(() => {
   const users = Object.values(usersStore.records);
 
   if (users.length === 0) {
-    return <div className="text-gray-400 p-4">No users found</div>;
+    return (
+      <div className="text-gray-400 p-4">
+        {usersStore.syncer.isPaused ? "Syncer is paused..." : "No users found"}
+      </div>
+    );
   }
 
   return (
@@ -137,7 +131,14 @@ const TenantsContent = observer(() => {
   const tenants = Object.values(tenantsStore.records);
 
   if (tenants.length === 0) {
-    return <div className="text-gray-400 p-4">No tenants found</div>;
+    console.log("tenant content", tenantsStore.syncer.isPaused);
+    return (
+      <div className="text-gray-400 p-4">
+        {tenantsStore.syncer.isPaused
+          ? "Syncer is paused..."
+          : "No tenants found"}
+      </div>
+    );
   }
 
   return (
@@ -168,7 +169,13 @@ const SubscriptionsContent = observer(() => {
   const subscriptions = Object.values(subscriptionsStore.records);
 
   if (subscriptions.length === 0) {
-    return <div className="text-gray-400 p-4">No subscriptions found</div>;
+    return (
+      <div className="text-gray-400 p-4">
+        {subscriptionsStore.syncer.isPaused
+          ? "Syncer is paused..."
+          : "No subscriptions found"}
+      </div>
+    );
   }
 
   return (
@@ -202,7 +209,13 @@ const InvoicesContent = observer(() => {
   const invoices = Object.values(invoicesStore.records);
 
   if (invoices.length === 0) {
-    return <div className="text-gray-400 p-4">No invoices found</div>;
+    return (
+      <div className="text-gray-400 p-4">
+        {invoicesStore.syncer.isPaused
+          ? "Syncer is paused..."
+          : "No invoices found"}
+      </div>
+    );
   }
 
   return (

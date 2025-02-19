@@ -8,25 +8,19 @@ import { observer } from "mobx-react-lite";
 import { twJoin } from "tailwind-merge";
 import type { DocumentStore } from "~/stores/documents.ts";
 import { useRootStore } from "~/stores/root.ts";
-import { useSyncIfNotPaused } from "~/utils/use-sync-if-not-paused.ts";
 import { SyncButton } from "../-components/SyncButton.tsx";
 
 export const Route = createFileRoute("/documents")({
+  ssr: false,
   component: DocumentsLayout,
 });
 
 function DocumentsLayout() {
-  const rootStore = useRootStore();
-  const documentsStore = rootStore.documents;
-
-  useSyncIfNotPaused(documentsStore.syncer);
-
   return (
     <div className="flex w-full">
       <div className="border-r h-screen w-80 flex flex-col shrink-0">
         <div className="flex items-center justify-between px-4 py-2 border-b">
           <h2 className="font-semibold">Documents</h2>
-          <SyncButton syncer={documentsStore.syncer} />
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -34,7 +28,9 @@ function DocumentsLayout() {
         </div>
       </div>
 
-      <Outlet />
+      <div className="flex-1 overflow-y-auto h-screen">
+        <Outlet />
+      </div>
     </div>
   );
 }
