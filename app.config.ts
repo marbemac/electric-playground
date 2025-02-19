@@ -9,11 +9,29 @@ export default defineConfig({
 	tsr: {
 		routeToken: "layout",
 	},
+	routers: {
+		client: {
+			vite: {
+				// @ts-expect-error fixed when https://github.com/nksaraf/vinxi/pull/465 merged
+				server: {
+					hmr: {
+						// set a specific port for the HMR server, this is what Caddy will proxy to
+						port: 60101,
+
+						// this is where caddy is listening - it will proxy to 60101
+						clientPort: 60100,
+					},
+				},
+			},
+		},
+	},
 	vite: {
 		plugins: [tailwindcss(), tsConfigPaths()],
+
 		optimizeDeps: {
 			exclude: ["@electric-sql/pglite"],
 		},
+
 		worker: {
 			format: "es",
 		},

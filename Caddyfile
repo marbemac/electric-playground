@@ -1,0 +1,15 @@
+# for the frontend app
+localhost:3000 {
+    tls internal
+    encode gzip
+
+    reverse_proxy host.docker.internal:3033
+}
+
+# for the vite HMR websocket connection
+localhost:60100 {
+    tls internal
+    encode gzip
+
+    reverse_proxy host.docker.internal:60101
+}

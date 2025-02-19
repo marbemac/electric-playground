@@ -1,6 +1,19 @@
 name: electric-mobx-example
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "60100:60100"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+
   pg:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -41,6 +54,8 @@ services:
 
 volumes:
   pg:
+  caddy_data:
+  caddy_config:
 
 networks:
   internal:
