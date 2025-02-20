@@ -3,8 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { observer } from "mobx-react-lite";
 import { twJoin } from "tailwind-merge";
 
-import type { SyncStore } from "~/stores/sync.ts";
-
 export const SyncButton = observer(
   ({
     syncer,
@@ -12,7 +10,12 @@ export const SyncButton = observer(
     label,
     fullWidth,
   }: {
-    syncer: SyncStore;
+    syncer: {
+      isSyncing: boolean;
+      isPaused: boolean;
+      error: Error | null;
+      togglePause: () => void;
+    };
     iconOnly?: boolean;
     label?: string;
     fullWidth?: boolean;
@@ -40,6 +43,7 @@ export const SyncButton = observer(
             />
           </div>
         </div>
+
         {syncer.error && (
           <div className="text-red-500 text-xs" title={syncer.error.message}>
             <FontAwesomeIcon icon={faExclamationCircle} />

@@ -12,8 +12,7 @@ import type { SetRequired } from "type-fest";
 
 import type { RootStore } from "./root.ts";
 import {
-	SyncStore,
-	type SyncableStore,
+	type SyncTarget,
 	insertRecord,
 	removeRecord,
 	updateRecord,
@@ -27,10 +26,9 @@ export type CommentCreationData = SetRequired<
 @model("el/CommentsStore")
 export class CommentsStore
 	extends Model({
-		syncer: prop<SyncStore>(() => new SyncStore({ table: "comments" })),
 		records: prop<Record<string, CommentStore>>(() => ({})),
 	})
-	implements SyncableStore<CommentCreationData>
+	implements SyncTarget<CommentCreationData>
 {
 	@modelAction
 	insert(record: CommentCreationData) {
@@ -64,11 +62,11 @@ export class CommentStore extends Model({
 }) {
 	@computed
 	get createdBy() {
-		return getRoot<RootStore>(this).users.records[this.created_by];
+		return getRoot<RootStore>(this).users?.records[this.created_by];
 	}
 
 	@computed
 	get document() {
-		return getRoot<RootStore>(this).documents.records[this.document_id];
+		return getRoot<RootStore>(this).documents?.records[this.document_id];
 	}
 }

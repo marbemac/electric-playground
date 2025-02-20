@@ -1,3 +1,4 @@
+import { computed } from "mobx";
 import { Model, model, prop, registerRootStore } from "mobx-keystone";
 import { createContext } from "~/utils/create-context.tsx";
 
@@ -36,4 +37,11 @@ export class RootStore extends Model({
 	invoices: prop<InvoicesStore>(() => new InvoicesStore({})),
 	documents: prop<DocumentsStore>(() => new DocumentsStore({})),
 	comments: prop<CommentsStore>(() => new CommentsStore({})),
-}) {}
+
+	currentUserId: prop<string | null>(() => null).withSetter(),
+}) {
+	@computed
+	get currentUser() {
+		return this.currentUserId ? this.users.records[this.currentUserId] : null;
+	}
+}

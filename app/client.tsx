@@ -10,7 +10,7 @@ configure({
   computedRequiresReaction: true,
   reactionRequiresObservable: true,
   observableRequiresReaction: true,
-  disableErrorBoundaries: true,
+  // disableErrorBoundaries: true, // https://github.com/xaviergonz/mobx-keystone/issues/556
 });
 
 const router = createRouter();

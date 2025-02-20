@@ -8,7 +8,6 @@ import { observer } from "mobx-react-lite";
 import { twJoin } from "tailwind-merge";
 import type { DocumentStore } from "~/stores/documents.ts";
 import { useRootStore } from "~/stores/root.ts";
-import { SyncButton } from "../-components/SyncButton.tsx";
 
 export const Route = createFileRoute("/documents")({
   ssr: false,

@@ -6,7 +6,7 @@ export const Route = createFileRoute("/documents/")({
 
 function RouteComponent() {
   return (
-    <div className="flex-1 flex items-center justify-center uppercase text-gray-600 font-semibold text-sm">
+    <div className="flex-1 flex items-center justify-center uppercase text-gray-600 font-semibold text-sm h-full">
       Select a document
     </div>
   );

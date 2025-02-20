@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { observer } from "mobx-react-lite";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useRootStore } from "~/stores/root";
-import type { SyncStore } from "~/stores/sync";
 import type { TenantStore } from "~/stores/tenants";
 import type { UserStore } from "~/stores/users";
 
@@ -18,30 +17,21 @@ export const Route = createFileRoute("/")({
 });
 
 function HomeRoute() {
-  const rootStore = useRootStore();
-  const usersStore = rootStore.users;
-  const tenantsStore = rootStore.tenants;
-  const subscriptionsStore = rootStore.subscriptions;
-  const invoicesStore = rootStore.invoices;
-
   return (
     <div className="grid grid-cols-2 grid-rows-2 h-screen w-full">
-      <TableSection
-        syncer={tenantsStore.syncer}
-        className="border-b-2 border-r-2"
-      >
+      <TableSection title="Tenants" className="border-b-2 border-r-2">
         <TenantsContent />
       </TableSection>
 
-      <TableSection syncer={usersStore.syncer} className="border-b-2">
+      <TableSection title="Users" className="border-b-2">
         <UsersContent />
       </TableSection>
 
-      <TableSection syncer={subscriptionsStore.syncer} className="border-r-2">
+      <TableSection title="Subscriptions" className="border-r-2">
         <SubscriptionsContent />
       </TableSection>
 
-      <TableSection syncer={invoicesStore.syncer}>
+      <TableSection title="Invoices">
         <InvoicesContent />
       </TableSection>
     </div>
@@ -50,18 +40,18 @@ function HomeRoute() {
 
 const TableSection = observer(
   ({
-    syncer,
+    title,
     children,
     className,
   }: {
-    syncer: SyncStore;
+    title: String;
     children: React.ReactNode;
     className?: string;
   }) => {
     return (
       <div className={`flex flex-col overflow-hidden ${className}`}>
         <div className="sticky top-0 flex items-center justify-between px-4 py-2 border-b">
-          <h2 className="font-semibold">{syncer.table}</h2>
+          <h2 className="font-semibold">{title}</h2>
         </div>
 
         <div className="flex-1 overflow-y-auto">{children}</div>
@@ -75,11 +65,7 @@ const UsersContent = observer(() => {
   const users = Object.values(usersStore.records);
 
   if (users.length === 0) {
-    return (
-      <div className="text-gray-400 p-4">
-        {usersStore.syncer.isPaused ? "Syncer is paused..." : "No users found"}
-      </div>
-    );
+    return <div className="text-gray-400 p-4">No users found</div>;
   }
 
   return (
@@ -131,14 +117,7 @@ const TenantsContent = observer(() => {
   const tenants = Object.values(tenantsStore.records);
 
   if (tenants.length === 0) {
-    console.log("tenant content", tenantsStore.syncer.isPaused);
-    return (
-      <div className="text-gray-400 p-4">
-        {tenantsStore.syncer.isPaused
-          ? "Syncer is paused..."
-          : "No tenants found"}
-      </div>
-    );
+    return <div className="text-gray-400 p-4">No tenants found</div>;
   }
 
   return (
@@ -169,13 +148,7 @@ const SubscriptionsContent = observer(() => {
   const subscriptions = Object.values(subscriptionsStore.records);
 
   if (subscriptions.length === 0) {
-    return (
-      <div className="text-gray-400 p-4">
-        {subscriptionsStore.syncer.isPaused
-          ? "Syncer is paused..."
-          : "No subscriptions found"}
-      </div>
-    );
+    return <div className="text-gray-400 p-4">No subscriptions found</div>;
   }
 
   return (
@@ -209,13 +182,7 @@ const InvoicesContent = observer(() => {
   const invoices = Object.values(invoicesStore.records);
 
   if (invoices.length === 0) {
-    return (
-      <div className="text-gray-400 p-4">
-        {invoicesStore.syncer.isPaused
-          ? "Syncer is paused..."
-          : "No invoices found"}
-      </div>
-    );
+    return <div className="text-gray-400 p-4">No invoices found</div>;
   }
 
   return (

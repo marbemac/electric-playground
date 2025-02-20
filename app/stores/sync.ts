@@ -8,71 +8,123 @@ import {
 	isControlMessage,
 } from "@electric-sql/client";
 import { getShapeStream } from "@electric-sql/react";
-import { autorun, computed, makeAutoObservable } from "mobx";
-import {
-	Model,
-	type Patch,
-	applyPatches,
-	getParent,
-	model,
-	modelAction,
-	prop,
-} from "mobx-keystone";
+import { autorun, makeAutoObservable, reaction } from "mobx";
+import { type Patch, applyPatches } from "mobx-keystone";
+import { createContext } from "~/utils/create-context";
 
-export interface SyncableStore<
-	T extends Record<string, unknown> = Record<string, unknown>,
-> {
-	syncer: SyncStore;
-	insert: (record: T) => void;
-	update: (record: { id: string } & Partial<T>) => void;
+export interface SyncTarget<T extends Record<string, unknown>> {
+	insert: (record: { id: string } & T) => void;
+	update: (record: { id: string } & T) => void;
 	remove: (id: string) => void;
 	clear: () => void;
 }
 
-@model("el/SyncStore")
-export class SyncStore extends Model({
-	table: prop<string>(),
-	isPaused: prop<boolean>(true),
-	isSyncing: prop<boolean>(false),
-	hasError: prop<boolean>(false),
-}) {
+export const [SyncersContext, useSyncers] = createContext<Syncers>({
+	name: "SyncersContext",
+	strict: true,
+});
+
+type SyncerId = string;
+
+export type SyncableRecord<T> = T & { id: string };
+
+export type InjectSyncerOptions<T extends SyncableRecord<unknown>> = {
+	id: SyncerId;
+	target: SyncTarget<T>;
+	shapeStream: ShapeStreamOptions;
+};
+
+export class Syncers {
+	private syncers: Record<SyncerId, SyncAltStore<any>> = {};
+
+	constructor() {
+		makeAutoObservable(this);
+	}
+
+	injectSyncer<T extends SyncableRecord<unknown>>({
+		id,
+		target,
+		shapeStream,
+	}: InjectSyncerOptions<T>) {
+		if (!this.syncers[id]) {
+			this.syncers[id] = new SyncAltStore(id, target, { shapeStream });
+		}
+
+		return this.syncers[id];
+	}
+}
+
+export class SyncAltStore<T extends SyncableRecord<unknown>> {
 	private controller: AbortController | undefined;
-	private stream: ShapeStream<{ id: string }> | undefined;
+	private stream: ShapeStream<T> | undefined;
 	private unsubscribe: (() => void) | undefined;
 	private lastOffset: Offset | undefined;
 	private lastShapeHandle: string | undefined;
 	private _error: FetchError | null = null;
 
-	private get collection() {
-		return getParent<SyncableStore>(this)!;
-	}
+	private target?: SyncTarget<T>;
+	private pendingStop: NodeJS.Timeout | undefined;
+	private refCount = 0;
 
-	onAttachedToRootStore() {
-		const disposables: (() => void)[] = [];
+	#shapeStreamOptions: ShapeStreamOptions;
+
+	id: SyncerId;
+	isPaused = true;
+	isSyncing = false;
+	hasError = false;
+
+	private disposables: (() => void)[] = [];
+
+	constructor(
+		id: SyncerId,
+		target: SyncTarget<T>,
+		{ shapeStream }: { shapeStream: ShapeStreamOptions },
+	) {
+		makeAutoObservable(this);
+
+		this.id = id;
+		this.target = target;
+		this.#shapeStreamOptions = shapeStream ?? {};
+
+		// if nothing is observing this syncer, stop it after 5 seconds
+		this.disposables.push(
+			reaction(
+				() => this.refCount,
+				() => {
+					if (this.refCount === 0) {
+						this.pendingStop = setTimeout(() => {
+							this.stop();
+						}, 5000);
+					}
+				},
+				{ fireImmediately: false },
+			),
+		);
 
 		if (!import.meta.env.SSR) {
-			disposables.push(
+			this.disposables.push(
 				autorun(() => {
 					localStorage.setItem(
-						`el-sync-${this.table}`,
+						`el-sync-${this.id}`,
 						JSON.stringify({ isPaused: this.isPaused }),
 					);
 				}),
 			);
-		}
 
-		if (!import.meta.env.SSR) {
-			const stored = localStorage.getItem(`el-sync-${this.table}`);
+			const stored = localStorage.getItem(`el-sync-${this.id}`);
 			if (stored) {
 				const { isPaused } = JSON.parse(stored);
 				this.isPaused = isPaused;
 			}
 		}
 
-		return () => disposables.forEach((d) => d());
+		// this.disposables.push(chunkProcessor())
 	}
 
-	@computed
+	dispose() {
+		this.disposables.forEach((d) => d());
+	}
+
 	get error() {
 		return this.hasError ? this._error : null;
 	}
@@ -82,7 +134,32 @@ export class SyncStore extends Model({
 		this.hasError = !!error;
 	}
 
-	@modelAction
+	isEqualToCurrentShapeStreamOptions(options: ShapeStreamOptions) {
+		return JSON.stringify(options) === JSON.stringify(this.#shapeStreamOptions);
+	}
+
+	updateShapeStreamOptions(options: ShapeStreamOptions) {
+		this.#shapeStreamOptions = options;
+		if (this.isSyncing) {
+			console.log("!! updateShapeStreamOptions", this.id, options);
+			this.reset();
+			this.target?.clear();
+			this.start();
+		}
+	}
+
+	registerObserver() {
+		this.refCount++;
+		if (this.pendingStop) {
+			clearTimeout(this.pendingStop);
+			this.pendingStop = undefined;
+		}
+	}
+
+	unregisterObserver() {
+		this.refCount--;
+	}
+
 	togglePause() {
 		if (this.isPaused) {
 			this.start();
@@ -93,25 +170,20 @@ export class SyncStore extends Model({
 		this.isPaused = !this.isPaused;
 	}
 
-	@modelAction
-	start({
-		shapeStreamOptions,
-	}: { shapeStreamOptions?: Omit<Partial<ShapeStreamOptions>, "table"> } = {}) {
+	start() {
 		this.controller = new AbortController();
 
-		this.stream = makeAutoObservable(
-			getShapeStream<{ id: string }>({
-				url: new URL(`/api/shapes`, window.location.origin).href,
-				signal: this.controller.signal,
-				offset: this.lastOffset,
-				handle: this.lastShapeHandle,
-				...shapeStreamOptions,
-				params: {
-					...shapeStreamOptions?.params,
-					table: this.table,
-				},
-			}),
-		);
+		this.stream = getShapeStream<T>({
+			signal: this.controller.signal,
+			offset: this.lastOffset,
+			handle: this.lastShapeHandle,
+			...this.#shapeStreamOptions,
+			url: new URL(this.#shapeStreamOptions.url, window.location.origin).href,
+			params: {
+				...this.#shapeStreamOptions?.params,
+				// table: this.table,
+			},
+		});
 
 		this.unsubscribe = this.stream.subscribe(
 			this.processMessages.bind(this),
@@ -121,7 +193,6 @@ export class SyncStore extends Model({
 		this.isSyncing = true;
 	}
 
-	@modelAction
 	stop() {
 		this.unsubscribe?.();
 		this.controller?.abort();
@@ -132,20 +203,30 @@ export class SyncStore extends Model({
 		this.isSyncing = false;
 	}
 
-	@modelAction
-	private processMessages(messages: Message<{ id: string }>[]) {
+	reset() {
+		this.stop();
+		this.lastOffset = undefined;
+		this.lastShapeHandle = undefined;
+	}
+
+	public processMessages(messages: Message<T>[]) {
+		const target = this.target;
+		if (!target) {
+			return;
+		}
+
 		for (const message of messages) {
 			if (isChangeMessage(message)) {
 				// console.log(message.headers.operation, message.value);
 				switch (message.headers.operation) {
 					case `insert`:
-						this.collection.insert(message.value);
+						target.insert(message.value);
 						break;
 					case `update`:
-						this.collection.update(message.value);
+						target.update(message.value);
 						break;
 					case `delete`:
-						this.collection.remove(message.value.id);
+						target.remove(message.value.id);
 						break;
 				}
 			}
@@ -153,11 +234,11 @@ export class SyncStore extends Model({
 			if (isControlMessage(message)) {
 				switch (message.headers.control) {
 					case `up-to-date`:
-						console.log("!! up-to-date", this.table);
+						console.log("!! up-to-date", this.id);
 						break;
 					case `must-refetch`:
-						console.log("!! must-refetch", this.table);
-						this.collection.clear();
+						console.log("!! must-refetch", this.id);
+						target.clear();
 						this.error = null;
 						break;
 				}
@@ -165,7 +246,6 @@ export class SyncStore extends Model({
 		}
 	}
 
-	@modelAction
 	private handleError(e: Error) {
 		if (e instanceof FetchError) {
 			this.error = e;

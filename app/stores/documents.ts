@@ -12,8 +12,7 @@ import type { SetRequired } from "type-fest";
 
 import type { RootStore } from "./root.ts";
 import {
-	SyncStore,
-	type SyncableStore,
+	type SyncTarget,
 	insertRecord,
 	removeRecord,
 	updateRecord,
@@ -27,10 +26,9 @@ export type DocumentCreationData = SetRequired<
 @model("el/DocumentsStore")
 export class DocumentsStore
 	extends Model({
-		syncer: prop<SyncStore>(() => new SyncStore({ table: "documents" })),
 		records: prop<Record<string, DocumentStore>>(() => ({})),
 	})
-	implements SyncableStore<DocumentCreationData>
+	implements SyncTarget<DocumentCreationData>
 {
 	@modelAction
 	insert(record: DocumentCreationData) {
@@ -66,7 +64,7 @@ export class DocumentStore extends Model({
 }) {
 	@computed
 	get createdBy() {
-		return getRoot<RootStore>(this).users.records[this.created_by];
+		return getRoot<RootStore>(this).users?.records[this.created_by];
 	}
 
 	@computed

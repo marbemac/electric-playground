@@ -1,11 +1,12 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { observer } from "mobx-react-lite";
+import { useEffect, useMemo } from "react";
 import { SyncButton } from "~/routes/-components/SyncButton";
 
+import { useSyncer } from "~/hooks/use-syncer";
 import type { CommentStore } from "~/stores/comments.ts";
 import type { DocumentStore } from "~/stores/documents.ts";
 import { useRootStore } from "~/stores/root.ts";
-import { useSyncIfNotPaused } from "~/utils/use-sync-if-not-paused.ts";
 
 export const Route = createFileRoute("/documents/$documentId/")({
   ssr: false,
@@ -21,8 +22,14 @@ function DocumentRoute() {
 const DocumentAndComments = observer(
   ({ documentId }: { documentId: string }) => {
     const rootStore = useRootStore();
-    const { documents } = rootStore;
+    const { documents, comments } = rootStore;
     const document = documents.records[documentId];
+
+    const commentsSyncer = useSyncer({
+      id: `comments-${documentId}`,
+      target: comments,
+      shapeStream: { url: `/api/shapes/documents/${documentId}/comments` },
+    });
 
     if (!document) {
       return (
@@ -41,7 +48,7 @@ const DocumentAndComments = observer(
         <div className="px-4 py-10">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Comments</h2>
-            <SyncButton syncer={rootStore.comments.syncer} />
+            <SyncButton syncer={commentsSyncer} />
           </div>
 
           <CommentsList document={document} />

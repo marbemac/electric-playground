@@ -12,8 +12,7 @@ import type { SetRequired } from "type-fest";
 import { computed } from "mobx";
 import type { RootStore } from "./root.ts";
 import {
-	SyncStore,
-	type SyncableStore,
+	type SyncTarget,
 	insertRecord,
 	removeRecord,
 	updateRecord,
@@ -28,10 +27,9 @@ export type TenantCreationData = SetRequired<
 @model("el/TenantsStore")
 export class TenantsStore
 	extends Model({
-		syncer: prop<SyncStore>(() => new SyncStore({ table: "tenants" })),
 		records: prop<Record<string, TenantStore>>(() => ({})),
 	})
-	implements SyncableStore<TenantCreationData>
+	implements SyncTarget<TenantCreationData>
 {
 	@modelAction
 	insert(record: TenantCreationData) {
@@ -61,7 +59,7 @@ export class TenantStore extends Model({
 }) {
 	@computed
 	get userRelationships(): UserTenantStore[] {
-		return getRoot<RootStore>(this).userTenants.byTenantId.get(this.id) || [];
+		return getRoot<RootStore>(this).userTenants?.byTenantId.get(this.id) || [];
 	}
 
 	@computed
@@ -94,7 +92,7 @@ export class TenantStore extends Model({
 
 	@computed
 	get subscription() {
-		return Object.values(getRoot<RootStore>(this).subscriptions.records).find(
+		return Object.values(getRoot<RootStore>(this).subscriptions?.records).find(
 			(r) => r.tenant_id === this.id,
 		);
 	}

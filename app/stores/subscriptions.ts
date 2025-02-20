@@ -12,8 +12,7 @@ import type { SetRequired } from "type-fest";
 
 import type { RootStore } from "./root.ts";
 import {
-	SyncStore,
-	type SyncableStore,
+	type SyncTarget,
 	insertRecord,
 	removeRecord,
 	updateRecord,
@@ -27,10 +26,9 @@ export type SubscriptionCreationData = SetRequired<
 @model("el/SubscriptionsStore")
 export class SubscriptionsStore
 	extends Model({
-		syncer: prop<SyncStore>(() => new SyncStore({ table: "subscriptions" })),
 		records: prop<Record<string, SubscriptionStore>>(() => ({})),
 	})
-	implements SyncableStore<SubscriptionCreationData>
+	implements SyncTarget<SubscriptionCreationData>
 {
 	@modelAction
 	insert(record: SubscriptionCreationData) {
@@ -62,12 +60,12 @@ export class SubscriptionStore extends Model({
 }) {
 	@computed
 	get tenant() {
-		return getRoot<RootStore>(this).tenants.records[this.tenant_id];
+		return getRoot<RootStore>(this).tenants?.records[this.tenant_id];
 	}
 
 	@computed
 	get invoices() {
-		return Object.values(getRoot<RootStore>(this).invoices.records).filter(
+		return Object.values(getRoot<RootStore>(this).invoices?.records).filter(
 			(r) => r.subscription_id === this.id,
 		);
 	}

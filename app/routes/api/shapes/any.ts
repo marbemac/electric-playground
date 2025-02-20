@@ -1,6 +1,6 @@
 import { createAPIFileRoute } from "@tanstack/start/api";
 
-export const APIRoute = createAPIFileRoute("/api/shapes")({
+export const APIRoute = createAPIFileRoute("/api/shapes/any")({
 	GET: async ({ request }) => {
 		const url = new URL(request.url);
 
