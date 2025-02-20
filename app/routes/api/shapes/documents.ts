@@ -47,11 +47,14 @@ export const APIRoute = createAPIFileRoute("/api/shapes/documents")({
 			const authorCondition = `created_by = '${userId}'`;
 
 			// re the ::text cast, see https://github.com/electric-sql/electric/issues/2360
-			const tenantCondition = `tenant_id::text IN (${userTenants.map((t) => `'${t.tenant_id}'`).join(",")})`;
+			const tenantCondition =
+				userTenants.length > 0
+					? `tenant_id::text IN (${userTenants.map((t) => `'${t.tenant_id}'`).join(",")})`
+					: false;
 
-			where = `
-				visibility = 'public' OR ${authorCondition} OR ${tenantCondition}
-			`;
+			where = [`visibility = 'public'`, authorCondition, tenantCondition]
+				.filter(Boolean)
+				.join(" OR ");
 
 			// Set up subscription to tenant changes
 			unsubscribe = userTenantsShape.subscribe(() => {
@@ -126,7 +129,7 @@ export const APIRoute = createAPIFileRoute("/api/shapes/documents")({
 
 			if (abortedDueToTenantChange) {
 				return new Response(null, {
-					status: 409, // Reset Content - indicating client should reset its view, or could send 205 but electric client doesn't do anything special w it
+					status: 205, // Reset Content - indicating client should reset its view
 					statusText: "Changes detected",
 				});
 			}
