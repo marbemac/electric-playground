@@ -1,4 +1,19 @@
+import { Shape, ShapeStream } from "@electric-sql/client";
 import { createAPIFileRoute } from "@tanstack/start/api";
+
+const getUserTenants = (userId: string) => {
+	const baseUrl = import.meta.env.VITE_ELECTRIC_URL;
+
+	const shapeStream = new ShapeStream({
+		url: new URL("/v1/shape", baseUrl).href,
+		params: {
+			table: "user_tenants",
+			where: `"user_id" = '${userId}'`,
+		},
+	});
+
+	return new Shape(shapeStream);
+};
 
 export const APIRoute = createAPIFileRoute("/api/shapes/documents")({
 	GET: async ({ request }) => {
@@ -16,27 +31,25 @@ export const APIRoute = createAPIFileRoute("/api/shapes/documents")({
 			}
 		});
 
-		console.log(url.searchParams);
-
 		originUrl.searchParams.set("table", "documents");
 
-		// if (process.env.ELECTRIC_SOURCE_ID) {
-		//   originUrl.searchParams.set(`source_id`, process.env.ELECTRIC_SOURCE_ID)
-		// }
-
-		// if (process.env.ELECTRIC_SOURCE_SECRET) {
-		//   originUrl.searchParams.set(
-		//     `source_secret`,
-		//     process.env.ELECTRIC_SOURCE_SECRET
-		//   )
-		// }
-		const where: string[] = [];
-
-		if (!url.searchParams.get("userId")) {
-			where.push("visibility = 'public'");
+		let where = "";
+		const userId = url.searchParams.get("userId");
+		if (!userId) {
+			where = "visibility = 'public'";
+		} else {
+			const userTenantsShape = getUserTenants(userId);
+			const userTenants = await userTenantsShape.rows;
+			const authorCondition = `created_by = '${userId}'`;
+			const tenantCondition = `tenant_id IN (${userTenants.map((t) => `'${t.tenant_id}'`).join(",")})`;
+			where = `
+				visibility = 'public' OR ${authorCondition} OR ${tenantCondition}
+			`;
+			// where = `tenant_id IN ('t4')`;
+			console.log(where);
 		}
 
-		originUrl.searchParams.set(`where`, where.join(" AND "));
+		originUrl.searchParams.set(`where`, where.trim());
 
 		// When proxying long-polling requests, content-encoding & content-length are added
 		// erroneously (saying the body is gzipped when it's not) so we'll just remove
