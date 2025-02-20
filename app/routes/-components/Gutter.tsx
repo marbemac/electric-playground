@@ -3,13 +3,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { observer } from "mobx-react-lite";
 
+import { useCallback, useState } from "react";
 import { useDocumentsSyncer } from "~/hooks/use-documents-syncer.ts";
 import { useInvoicesSyncer } from "~/hooks/use-invoices-syncer.ts";
 import { useSubscriptionsSyncer } from "~/hooks/use-subscriptions-syncer.ts";
 import { useTenantsSyncer } from "~/hooks/use-tenants-syncer.ts";
 import { useUserTenantsSyncer } from "~/hooks/use-user-tenants-syncer.ts";
 import { useUsersSyncer } from "~/hooks/use-users-syncer.ts";
+import { removeUserTenant } from "~/routes/-server/users.ts";
 import { useRootStore } from "~/stores/root";
+import type { TenantStore } from "~/stores/tenants.ts";
+import type { UserStore } from "~/stores/users.ts";
 import { SyncButton } from "./SyncButton.tsx";
 
 export const Gutter = observer(() => {
@@ -70,7 +74,7 @@ const CurrentUserSection = observer(() => {
           <option value="">Anonymous</option>
           {Object.values(rootStore.users.records).map((user) => (
             <option key={user.id} value={user.id}>
-              {user.username}
+              {user.username} ({user.id})
             </option>
           ))}
         </select>
@@ -95,17 +99,55 @@ const CurrentUserTenants = observer(() => {
 
       <div className="flex flex-col gap-1 px-1">
         {currentUser.tenants.map((tenant) => (
-          <div key={tenant.id} className="text-sm flex items-center gap-2">
-            <span className="opacity-80 text-xs">{tenant.name}</span>
-            <span className="text-xs text-gray-500">
-              ({currentUser.isAdminOfTenant(tenant.id) ? "admin" : "member"})
-            </span>
-          </div>
+          <CurrentUserTenant
+            key={tenant.id}
+            tenant={tenant}
+            currentUser={currentUser}
+          />
         ))}
       </div>
     </div>
   );
 });
+
+const CurrentUserTenant = observer(
+  ({
+    tenant,
+    currentUser,
+  }: {
+    tenant: TenantStore;
+    currentUser: UserStore;
+  }) => {
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = useCallback(async () => {
+      setIsDeleting(true);
+      await removeUserTenant({
+        data: { userId: currentUser.id, tenantId: tenant.id },
+      });
+    }, [currentUser, tenant]);
+
+    return (
+      <div key={tenant.id} className="text-sm flex items-center gap-2">
+        <div className="flex flex-col gap-1">
+          <div className="text-gray-300 text-xs">{tenant.name}</div>
+          <div className="text-xs text-gray-500">
+            {currentUser.isAdminOfTenant(tenant.id) ? "admin" : "member"}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="text-red-400/70 ml-auto text-xs cursor-pointer disabled:opacity-50"
+          onClick={handleDelete}
+          disabled={isDeleting}
+        >
+          [X]
+        </button>
+      </div>
+    );
+  }
+);
 
 const SyncControlsSection = observer(() => {
   const rootStore = useRootStore();
