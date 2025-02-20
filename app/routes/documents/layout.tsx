@@ -17,9 +17,14 @@ export const Route = createFileRoute("/documents")({
 function DocumentsLayout() {
   return (
     <div className="flex w-full">
-      <div className="border-r h-screen w-80 flex flex-col shrink-0">
-        <div className="flex items-center justify-between px-4 py-2 border-b">
+      <div className="border-r h-screen w-96 flex flex-col shrink-0">
+        <div className="flex flex-col gap-1items-center justify-between px-4 py-2 border-b">
           <h2 className="font-semibold">Documents</h2>
+          <div className="opacity-50 text-xs">
+            Anybody can see public documents. Logged in users can see private
+            documents that they created. Tenant admins can see all documents in
+            their tenant.
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -58,10 +63,13 @@ const DocumentRow = observer(
         <div className="text-sm font-semibold">{document.title}</div>
 
         <div className="text-gray-400 text-xs flex gap-2">
-          <div>{document.createdBy?.username}</div>
-          <div className="ml-auto flex gap-1">
-            <div>{document.status}</div>
+          <div className="flex gap-1">
+            <div>{document.createdBy?.username}</div>
             <div>•</div>
+            <div>{document.tenant?.name}</div>
+          </div>
+
+          <div className="ml-auto flex gap-1">
             <div>{document.visibility}</div>
           </div>
         </div>

@@ -97,7 +97,9 @@ export const ingestRawEvents = async (
 		const tenantId = `t${tenantIds++}`;
 		records.tenants.push({
 			id: tenantId,
-			name: unique(faker.company.name(), { store: tenantUniqStore }),
+			name: unique(`${faker.food.adjective()}_${faker.food.fruit()}`, {
+				store: tenantUniqStore,
+			}),
 		});
 	}
 
