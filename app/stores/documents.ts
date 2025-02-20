@@ -59,12 +59,18 @@ export class DocumentStore extends Model({
 	status: prop<string>(),
 	created_at: prop<string>(),
 	created_by: prop<string>(),
+	tenant_id: prop<string>(),
 	updated_at: prop<string>(),
 	visibility: prop<string>(),
 }) {
 	@computed
 	get createdBy() {
 		return getRoot<RootStore>(this).users?.records[this.created_by];
+	}
+
+	@computed
+	get tenant() {
+		return getRoot<RootStore>(this).tenants?.records[this.tenant_id];
 	}
 
 	@computed

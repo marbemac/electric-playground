@@ -73,12 +73,16 @@ export const documentsTable = pgTable(
 		status: varchar({ enum: ["draft", "published", "archived"] }).notNull(),
 		created_at: timestamp({ mode: "string" }).notNull(),
 		created_by: varchar({ length: 255 }).notNull(), // references users.id
+		tenant_id: varchar({ length: 255 }).notNull(), // references tenants.id
 		updated_at: timestamp({ mode: "string" }).$onUpdate(() =>
 			new Date().toISOString(),
 		),
 		visibility: varchar({ enum: ["public", "private"] }).notNull(),
 	},
-	(table) => [index("documents_created_by_idx").on(table.created_by)],
+	(table) => [
+		index("documents_created_by_idx").on(table.created_by),
+		index("documents_tenant_id_idx").on(table.tenant_id),
+	],
 );
 
 export const commentsTable = pgTable(

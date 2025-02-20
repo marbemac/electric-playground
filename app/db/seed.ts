@@ -148,8 +148,17 @@ export const ingestRawEvents = async (
 			DOCUMENTS_PER_USER_COUNT[1],
 		);
 
+		// Get the user's tenants
+		const userTenants = records.userTenants.filter(
+			(ut) => ut.user_id === user.id,
+		);
+		if (userTenants.length === 0) continue;
+
 		for (let i = 0; i < documentsCount; i++) {
 			const documentId = `d${documentIds++}`;
+			// Randomly select one of the user's tenants for this document
+			const randomTenant =
+				userTenants[Math.floor(Math.random() * userTenants.length)];
 
 			records.documents.push({
 				id: documentId,
@@ -163,6 +172,7 @@ export const ingestRawEvents = async (
 				})(),
 				created_at: dayjs().format("YYYY-MM-DD HH:mm:ss.SSS"),
 				created_by: user.id,
+				tenant_id: randomTenant.tenant_id,
 				visibility: (() => {
 					const rand = Math.random() * 100;
 					if (rand < 60) return "public";
