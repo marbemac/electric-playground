@@ -1,4 +1,19 @@
+import { Shape, ShapeStream } from "@electric-sql/client";
 import { createAPIFileRoute } from "@tanstack/start/api";
+
+const getUserTenants = (userId: string) => {
+	const baseUrl = import.meta.env.VITE_ELECTRIC_URL;
+
+	const shapeStream = new ShapeStream({
+		url: new URL("/v1/shape", baseUrl).href,
+		params: {
+			table: "user_tenants",
+			where: `"user_id" = '${userId}'`,
+		},
+	});
+
+	return new Shape(shapeStream);
+};
 
 export const APIRoute = createAPIFileRoute("/api/shapes/documents")({
 	GET: async ({ request }) => {
@@ -16,45 +31,107 @@ export const APIRoute = createAPIFileRoute("/api/shapes/documents")({
 			}
 		});
 
-		console.log(url.searchParams);
-
 		originUrl.searchParams.set("table", "documents");
 
-		// if (process.env.ELECTRIC_SOURCE_ID) {
-		//   originUrl.searchParams.set(`source_id`, process.env.ELECTRIC_SOURCE_ID)
-		// }
+		let where = "";
+		const userId = url.searchParams.get("userId");
+		const controller = new AbortController();
+		let unsubscribe: (() => void) | undefined;
+		let abortedDueToTenantChange = false;
 
-		// if (process.env.ELECTRIC_SOURCE_SECRET) {
-		//   originUrl.searchParams.set(
-		//     `source_secret`,
-		//     process.env.ELECTRIC_SOURCE_SECRET
-		//   )
-		// }
-		const where: string[] = [];
+		if (!userId) {
+			where = "visibility = 'public'";
+		} else {
+			const userTenantsShape = getUserTenants(userId);
+			const userTenants = await userTenantsShape.rows;
+			const authorCondition = `created_by = '${userId}'`;
 
-		if (!url.searchParams.get("userId")) {
-			where.push("visibility = 'public'");
-		}
+			// re the ::text cast, see https://github.com/electric-sql/electric/issues/2360
+			const tenantCondition = `tenant_id::text IN (${userTenants.map((t) => `'${t.tenant_id}'`).join(",")})`;
 
-		originUrl.searchParams.set(`where`, where.join(" AND "));
+			where = `
+				visibility = 'public' OR ${authorCondition} OR ${tenantCondition}
+			`;
 
-		// When proxying long-polling requests, content-encoding & content-length are added
-		// erroneously (saying the body is gzipped when it's not) so we'll just remove
-		// them to avoid content decoding errors in the browser.
-		//
-		// Similar-ish problem to https://github.com/wintercg/fetch/issues/23
-		const resp = await fetch(originUrl);
-		if (resp.headers.get("content-encoding")) {
-			const headers = new Headers(resp.headers);
-			headers.delete("content-encoding");
-			headers.delete("content-length");
-			return new Response(resp.body, {
-				status: resp.status,
-				statusText: resp.statusText,
-				headers,
+			// Set up subscription to tenant changes
+			unsubscribe = userTenantsShape.subscribe(() => {
+				abortedDueToTenantChange = true;
+				controller.abort();
 			});
 		}
 
-		return resp;
+		originUrl.searchParams.set(`where`, where.trim());
+
+		try {
+			const resp = await fetch(originUrl, {
+				signal: controller.signal,
+			});
+
+			// Create a new stream that we can use to cleanup the subscription
+			const stream = new ReadableStream({
+				async start(controller) {
+					const reader = resp.body?.getReader();
+					if (!reader) {
+						unsubscribe?.();
+						controller.close();
+						return;
+					}
+
+					async function push() {
+						if (!reader) return;
+
+						try {
+							const { done, value } = await reader.read();
+
+							if (done) {
+								unsubscribe?.();
+								controller.close();
+								return;
+							}
+
+							controller.enqueue(value);
+
+							push();
+						} catch (error) {
+							unsubscribe?.();
+							controller.error(error);
+						}
+					}
+
+					push();
+				},
+				cancel() {
+					unsubscribe?.();
+				},
+			});
+
+			if (resp.headers.get("content-encoding")) {
+				const headers = new Headers(resp.headers);
+				headers.delete("content-encoding");
+				headers.delete("content-length");
+				return new Response(stream, {
+					status: resp.status,
+					statusText: resp.statusText,
+					headers,
+				});
+			}
+
+			return new Response(stream, {
+				status: resp.status,
+				statusText: resp.statusText,
+				headers: resp.headers,
+			});
+		} catch (error) {
+			unsubscribe?.();
+
+			if (abortedDueToTenantChange) {
+				return new Response(null, {
+					status: 409, // Reset Content - indicating client should reset its view, or could send 205 but electric client doesn't do anything special w it
+					statusText: "Changes detected",
+				});
+			}
+
+			throw error; // Re-throw other errors
+		}
 	},
 });
